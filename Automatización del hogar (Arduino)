@@ -1,35 +1,59 @@
+// Inclusión de librerías
+
+// Se incluye la librería para manejar la conectividad WiFi
 #include <WiFi.h>
+// Se incluye la librería para realizar peticiones HTTP
 #include <HTTPClient.h>
+// Se incluye la librería para manejar datos JSON
 #include <ArduinoJson.h>
+// Se incluye la librería para el sensor de temperatura y humedad DHT11
 #include <DHT.h>
 
-// Definiciones para el DHT11
-#define DHTPIN 14     // Pin donde está conectado el DHT11
-#define DHTTYPE DHT11 // Tipo de DHT - DHT11
+// Definiciones y configuración del sensor DHT11
+
+// Se define el pin14 del ESP32 para conectar el sensor DHT11
+#define DHTPIN 14
+// Se especifica que se utilizará el modelo DHT11
+#define DHTTYPE DHT11
+// Se crea una instancia del sensor DHT11
 DHT dht(DHTPIN, DHTTYPE);
 
-// Pines para los componentes
-const int redPin = 33;   // Pin para el color rojo del LED RGB
-const int greenPin = 25; // Pin para el color verde del LED RGB
-const int bluePin = 26;  // Pin para el color azul del LED RGB
-const int dipSwitch1Pin = 5;  // Pin para el primer interruptor del dip switch
-const int dipSwitch2Pin = 27; // Pin para el segundo interruptor del dip switch
-const int photoInterrupterPin = 19; // Pin para el KY-010 Photo Interrupter Module
-const int knockSensorPin = 18; // Pin para el KY-031 Knock Sensor Module
+// Definición de pines para otros componentes
 
-bool ledState = false; // Estado del LED para el sensor Knock
+// Se define el pin33 para el color rojo del LED RGB
+const int redPin = 33;
+// Se define el pin25 para el color verde del LED RGB
+const int greenPin = 25;
+// Se define el pin26 para el color azul del LED RGB
+const int bluePin = 26;
+// Se define el pin5 para el primer interruptor del dip switch
+const int dipSwitch1Pin = 5;
+// Se define el pin27 para el segundo interruptor del dip switch
+const int dipSwitch2Pin = 27;
+// Se define el pin19 para el KY-010 Photo Interrupter Module
+const int photoInterrupterPin = 19;
+// Se define el pin 18 para el KY-031 Knock Sensor Module
+const int knockSensorPin = 18;
 
-// Replace with your network credentials
+// Variables globales
+// Estado inicial del LED para el sensor KY-031 Knock Sensor Module
+bool ledState = false;
+
+// Credenciales de WiFi y URL de la API
+// Se definen las credenciales de Wifi
 const char* ssid = "Tec-Contingencia";
 const char* password = "";
-
-// Replace with your API endpoint
+// Se define la URL del endpoint de la API a la que se enviarán los datos
 const char* apiEndpoint = "https://automatic-giggle-jj5v456g7pv5hjqwv-5000.app.github.dev/sensor_data";
 
+// Se inicia la comunicación Serial y se conecta a la red WiFi
 void setupWifi()
 {
+  // Inicia la comunicación serial con serial entre el ESP32 y la computadora
   Serial.begin(9600);
+  // Se imprime el menaje "Connecting to WiFi" para indicar que el proceso de conexión WiFi está comenzando
   Serial.print("Connecting to WiFi");
+  // Se intenta conectar el dispositivo a la red WiFi especificada
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED)
   {
@@ -37,9 +61,11 @@ void setupWifi()
     Serial.print(".");
   }
   Serial.print(" Connected: ");
+  // Se imprime la dirección IP local asignada al dispositivo por la red WiFi
   Serial.println(WiFi.localIP());
 }
 
+// Se configuran los pines de los sensores como entradas o salidas y se inicializa el sensor DHT11
 void setupSensors()
 {
   pinMode(redPin, OUTPUT);
@@ -49,7 +75,8 @@ void setupSensors()
   pinMode(dipSwitch2Pin, INPUT_PULLUP);
   pinMode(photoInterrupterPin, INPUT);
   pinMode(knockSensorPin, INPUT);
-  dht.begin(); // Inicializa el DHT11
+  // Se inicializa el DHT11
+  dht.begin(); 
 }
 
 void setup()
@@ -123,34 +150,47 @@ void setColor(int red, int green, int blue)
   analogWrite(bluePin, blue);
 }
 
+// Se prepara y envía una petición HTTP POST al API con los datos de los sensores en formato JSON
+
+// Esta función toma como parámetros "temperature (float)", "humidity (float)", "open (int)", "light(int)"
 void sendData(float temperature, float humidity, int open, int light)
 {
+  // Envía un mensaje a la consola serial para indicar que el proceso de envío de datos está comenzando
   Serial.print("Sending data to API: ");
 
-  // Set up HTTP connection with the API endpoint
+  // Se crea un objeto "http", que se utilizará para manejar la conexión y las peticiones HTTP
   HTTPClient http;
+  // Inicia una conexión HTTP al endpoint de la API
   http.begin(apiEndpoint);
+  // Añade un encabezado HTTP a la petición, especificando que el tipo de dato es JSON
   http.addHeader("Content-Type", "application/json");
 
-  // Create a JSON document using the ArduinoJson library
+  // Se crea una documento JSON utilizando la biblioteca ArduinoKson, con un tamaño máximo de 200 bytes
   DynamicJsonDocument doc(200);
 
-  // Add the data to the JSON document
+  // Añade la temperatura al documento JSON
   doc["temperature"] = temperature;
+  // Añade la humedad al documento JSON
   doc["humidity"] = humidity;
+  // Añade el estado del sensor "open" al documento JSON
   doc["open"] = open;
-  doc["light"] = light;  // Se agrega el estado del LED al JSON
+  // Añade el estado del LED al documento JSON
+  doc["light"] = light;
+
+
   doc["date_time"] = "2023-11-27 12:00:00";  // Modifica esto con la fecha y hora actual
 
-  // Serialize the JSON document to a string
+  // Crea una variable tipo "String" para almacenar la versión serializada del documento JSON
   String json;
+  // Convierte el documento JSON en una cadena de texto y lo almacena en "json"
   serializeJson(doc, json);
 
-  // Send the POST request to the API endpoint
+  // Se envía una petición POST con el contenido JSON al servidor 
   int httpResponseCode = http.POST(json);
+  // Si el código de respuesta es positivo (se indica el éxito en la petición)
   if (httpResponseCode > 0)
   {
-    // Print the response from the server
+    // 
     Serial.print("HTTP Response code: ");
     Serial.println(httpResponseCode);
     String responseString = http.getString();
