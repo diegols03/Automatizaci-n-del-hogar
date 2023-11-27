@@ -1,0 +1,166 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+#include <DHT.h>
+
+// Definiciones para el DHT11
+#define DHTPIN 14     // Pin donde está conectado el DHT11
+#define DHTTYPE DHT11 // Tipo de DHT - DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+// Pines para los componentes
+const int redPin = 33;   // Pin para el color rojo del LED RGB
+const int greenPin = 25; // Pin para el color verde del LED RGB
+const int bluePin = 26;  // Pin para el color azul del LED RGB
+const int dipSwitch1Pin = 5;  // Pin para el primer interruptor del dip switch
+const int dipSwitch2Pin = 27; // Pin para el segundo interruptor del dip switch
+const int photoInterrupterPin = 19; // Pin para el KY-010 Photo Interrupter Module
+const int knockSensorPin = 18; // Pin para el KY-031 Knock Sensor Module
+
+bool ledState = false; // Estado del LED para el sensor Knock
+
+// Replace with your network credentials
+const char* ssid = "Tec-Contingencia";
+const char* password = "";
+
+// Replace with your API endpoint
+const char* apiEndpoint = "https://automatic-giggle-jj5v456g7pv5hjqwv-5000.app.github.dev/sensor_data";
+
+void setupWifi()
+{
+  Serial.begin(9600);
+  Serial.print("Connecting to WiFi");
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(100);
+    Serial.print(".");
+  }
+  Serial.print(" Connected: ");
+  Serial.println(WiFi.localIP());
+}
+
+void setupSensors()
+{
+  pinMode(redPin, OUTPUT);
+  pinMode(greenPin, OUTPUT);
+  pinMode(bluePin, OUTPUT);
+  pinMode(dipSwitch1Pin, INPUT_PULLUP);
+  pinMode(dipSwitch2Pin, INPUT_PULLUP);
+  pinMode(photoInterrupterPin, INPUT);
+  pinMode(knockSensorPin, INPUT);
+  dht.begin(); // Inicializa el DHT11
+}
+
+void setup()
+{
+  setupWifi();
+  setupSensors();
+}
+
+void loop()
+{
+  // Leer y mostrar datos del DHT11
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+
+  // Imprime el estado de los switches y sensores para depuración
+  Serial.print("Dip Switch 1: ");
+  Serial.print(digitalRead(dipSwitch1Pin));
+  Serial.print(", Dip Switch 2: ");
+  Serial.print(digitalRead(dipSwitch2Pin));
+  Serial.print(", Photo Interrupter: ");
+  Serial.print(digitalRead(photoInterrupterPin));
+  Serial.print(", Knock Sensor: ");
+  Serial.println(digitalRead(knockSensorPin));
+  Serial.print("Humidity: ");
+  Serial.print(h);
+  Serial.print("%, Temp: ");
+  Serial.print(t);
+  Serial.println("C");
+
+  int openValue = 0;
+  int lightValue = 0;  // Nuevo valor para almacenar el estado del LED
+
+  if (digitalRead(dipSwitch1Pin) == HIGH && digitalRead(dipSwitch2Pin) == LOW)
+  {
+    // Primer switch activado y segundo apagado
+    if (digitalRead(photoInterrupterPin) == HIGH)
+    {
+      setColor(255, 255, 255); // Blanco
+      openValue = 1;  // Cambiado para almacenar el estado del Photo Interrupter
+    }
+    else
+    {
+      setColor(255, 0, 0); // Rojo
+      openValue = 0;
+    }
+  }
+  else if (digitalRead(dipSwitch2Pin) == HIGH && digitalRead(dipSwitch1Pin) == LOW)
+  {
+    // Segundo switch activado y primero apagado
+    if (digitalRead(knockSensorPin) == HIGH)
+    {
+      ledState = !ledState; // Cambia el estado del LED
+      delay(100); // Pequeño retardo para evitar múltiples disparos
+    }
+    setColor(ledState ? 255 : 0, ledState ? 255 : 0, ledState ? 255 : 0); // Blanco o apagado
+    lightValue = ledState ? 1 : 0;  // Almacenar el estado del LED
+  }
+  else
+  {
+    setColor(0, 0, 0); // Ambos switches apagados o ambos activados
+  }
+
+  sendData(t, h, openValue, lightValue);  // Se agrega lightValue al enviar datos
+  delay(5000); // Retardo de 5000 milisegundos para enviar datos cada 5 segundos
+}
+
+void setColor(int red, int green, int blue)
+{
+  analogWrite(redPin, red);
+  analogWrite(greenPin, green);
+  analogWrite(bluePin, blue);
+}
+
+void sendData(float temperature, float humidity, int open, int light)
+{
+  Serial.print("Sending data to API: ");
+
+  // Set up HTTP connection with the API endpoint
+  HTTPClient http;
+  http.begin(apiEndpoint);
+  http.addHeader("Content-Type", "application/json");
+
+  // Create a JSON document using the ArduinoJson library
+  DynamicJsonDocument doc(200);
+
+  // Add the data to the JSON document
+  doc["temperature"] = temperature;
+  doc["humidity"] = humidity;
+  doc["open"] = open;
+  doc["light"] = light;  // Se agrega el estado del LED al JSON
+  doc["date_time"] = "2023-11-27 12:00:00";  // Modifica esto con la fecha y hora actual
+
+  // Serialize the JSON document to a string
+  String json;
+  serializeJson(doc, json);
+
+  // Send the POST request to the API endpoint
+  int httpResponseCode = http.POST(json);
+  if (httpResponseCode > 0)
+  {
+    // Print the response from the server
+    Serial.print("HTTP Response code: ");
+    Serial.println(httpResponseCode);
+    String responseString = http.getString();
+    Serial.println("Received response: " + responseString);
+  }
+  else
+  {
+    // Print the error code
+    Serial.print("Error code: ");
+    Serial.println(httpResponseCode);
+  }
+  http.end();
+}
