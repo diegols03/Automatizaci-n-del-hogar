@@ -1,13 +1,25 @@
+# Importaciones de librerías
+
+# Importa funciones de Flask para crear la aplicación web, manejar solicitudes y renderizar plantillas HTML
 from flask import Flask, request, render_template, jsonify
-from datetime import date, datetime, timedelta
+
+#Conectar y trabajar con la base de datos MySQL
 import mysql.connector
-from flask import Flask, render_template
+
+# Creación de las gráficas
 import matplotlib.pyplot as plt
+
+#Trabajar con flujos de bytes en memorias (imágenes)
 from io import BytesIO
+
+# Codificar y decodificar datos
 import base64
 
-app = Flask(_name_)
+# Se crea una instancia de la aplicación Flask
+app = Flask(__name__)
 
+# Se define una función para establecer una conexión con la base de datos y del usuario y devuelve un objeto de conexión y un cursor
+# para interactuar con la base de datos
 
 def createConnection(user_name, database_name, user_password, host, port):
     cnx = mysql.connector.connect(
@@ -15,16 +27,24 @@ def createConnection(user_name, database_name, user_password, host, port):
     cursor = cnx.cursor()
     return (cnx, cursor)
 
+# Se define una ruta en la aplicación Flask para manejar solicitude GET a raíz 
 
 @app.route('/', methods=['GET'])
 def get_sensor_data():
     # Create a connection to the database
     cnx, cursor = createConnection('sql3664319', 'sql3664319', '1rkdn7S2JY', 'sql3.freemysqlhosting.net', '3306')
 
-    # Query the database
-    query = ("SELECT * FROM dht_sensor_data")
+    # Insert data into the database (Example data)
+    try:
+        insert_query = "INSERT INTO sensores (humidity, temperature, open, light, date_time) VALUES (%s, %s, %s, %s, %s)"
+        cursor.execute(insert_query, (50, 25, 1, 0, '2023-11-27 12:00:00'))
+        cnx.commit()
+    except mysql.connector.Error as err:
+        print("Something went wrong: {}".format(err))
+        
 
-    # Execute the query
+    # Query the database
+    query = "SELECT * FROM sensores"
     cursor.execute(query)
 
     # Get the data
@@ -34,12 +54,10 @@ def get_sensor_data():
     cursor.close()
     cnx.close()
 
-        # Obtener los valores de x e y desde los datos
+    # Plotting data
     x = [item[0] for item in data]
     y1 = [item[1] for item in data]
     y2 = [item[2] for item in data]
-
-    # Crear la gráfica
     plt.figure(figsize=(8, 4))
     plt.plot(x, y1, label='Valor 1')
     plt.plot(x, y2, label='Valor 2')
@@ -47,35 +65,32 @@ def get_sensor_data():
     plt.ylabel('Y')
     plt.legend()
 
-    # Guardar la gráfica en un archivo temporal
+    # Save the plot to a temporary file
     img = BytesIO()
     plt.savefig(img, format='png')
     img.seek(0)
     img_data = base64.b64encode(img.getvalue()).decode()
 
-    # Renderizar la plantilla HTML con la gráfica
+    # Render the HTML template with the plot
     return render_template('index.html', img_data=img_data)
 
-    # Return the data
-    # return , 200
-
+# Se define una ruta para manejar solicitud POST. 
 
 @app.route('/sensor_data', methods=['POST'])
 def receive_sensor_data():
     if request.headers['Content-Type'] == 'application/json':
         data = request.json
 
-        humidity = float (data.get('humidity')) 
-        temperature = float (data.get('temperature'))
-        open = int (data.get('open')) # "0.0"
-        light = int (data.get('light'))
-        date_time = data.get('date_time') # "2021-08-08 12:00:00"
+        humidity = data.get('humidity')
+        temperature = data.get('temperature')
+        open = data.get('open')
+        light = data.get('light')
+        date_time = data.get('date_time')
 
         cnx, cursor = createConnection('sql3664319', 'sql3664319', '1rkdn7S2JY', 'sql3.freemysqlhosting.net', '3306')
 
-        add_data = ("INSERT INTO dht_sensor_data (humidity, temperature, open, date_time) VALUES ("+humidity+","+temperature+","+open+","+light+",'"+date_time+"')")
-        
-        cursor.execute(add_data)
+        add_data = "INSERT INTO sensores (humidity, temperature, open, light, date_time) VALUES (%s, %s, %s, %s, %s)"
+        cursor.execute(add_data, (humidity, temperature, open, light, date_time))
         cnx.commit()
         cursor.close()
         cnx.close()
@@ -83,3 +98,6 @@ def receive_sensor_data():
         return 'Data received successfully.', 200
     else:
         return 'Invalid content type. Expected application/json.', 400
+
+if _name_ == '_main_':
+    app.run(debug=True)
