@@ -16,28 +16,32 @@ from io import BytesIO
 import base64
 
 # Se crea una instancia de la aplicación Flask
-app = Flask(__name__)
+app = Flask(_name_)
 
 # Se define una función para establecer una conexión con la base de datos y del usuario y devuelve un objeto de conexión y un cursor
 # para interactuar con la base de datos
 
-def createConnection(user_name, database_name, user_password, host, port):
+def createConnection(user_name, database_name, user_password, host, port):   
+    # Se crea la conexión a la base de datos
     cnx = mysql.connector.connect(
         user=user_name, database=database_name, password=user_password, host=host, port=port)
+    # Se crea un objeto cursor
     cursor = cnx.cursor()
     return (cnx, cursor)
 
 # Se define una ruta en la aplicación Flask para manejar solicitude GET a raíz 
 
+# La ruta raíz solamente acepta solicitudes GET
 @app.route('/', methods=['GET'])
 def get_sensor_data():
     # Create a connection to the database
     cnx, cursor = createConnection('sql3664319', 'sql3664319', '1rkdn7S2JY', 'sql3.freemysqlhosting.net', '3306')
 
-    # Insert data into the database (Example data)
+    # El bloque try se utiliza para manejar excepciones
     try:
         insert_query = "INSERT INTO sensores (humidity, temperature, open, light, date_time) VALUES (%s, %s, %s, %s, %s)"
         cursor.execute(insert_query, (50, 25, 1, 0, '2023-11-27 12:00:00'))
+        # Se confirma que la inserción de datos en la base de datos se realizó correctamente
         cnx.commit()
     except mysql.connector.Error as err:
         print("Something went wrong: {}".format(err))
@@ -54,7 +58,7 @@ def get_sensor_data():
     cursor.close()
     cnx.close()
 
-    # Plotting data
+    # Se plotea la gráfica
     x = [item[0] for item in data]
     y1 = [item[1] for item in data]
     y2 = [item[2] for item in data]
@@ -65,20 +69,26 @@ def get_sensor_data():
     plt.ylabel('Y')
     plt.legend()
 
-    # Save the plot to a temporary file
+    # Se genera un buffer en memoria para almacenar la gráfica generada
     img = BytesIO()
+    # Guarda la gráfica en el buffer creado anteriormente
     plt.savefig(img, format='png')
+    # Se mueve el puntero al inicio del buffer para que se pueda leer desde el principio
     img.seek(0)
+
+    # Codifica la gráfica en base64, lo que la incrustra en una página web
     img_data = base64.b64encode(img.getvalue()).decode()
 
-    # Render the HTML template with the plot
+    # Devuelve una página HTML con la gráfica incrustrada
     return render_template('index.html', img_data=img_data)
 
 # Se define una ruta para manejar solicitud POST. 
 
 @app.route('/sensor_data', methods=['POST'])
 def receive_sensor_data():
+    # Esta línea comprueba si el tipo de contenido de la solicitud POST es 'application/json'
     if request.headers['Content-Type'] == 'application/json':
+        # Se asignan los datos JSON enviados en la solicitud a la variable data
         data = request.json
 
         humidity = data.get('humidity')
@@ -92,6 +102,7 @@ def receive_sensor_data():
         add_data = "INSERT INTO sensores (humidity, temperature, open, light, date_time) VALUES (%s, %s, %s, %s, %s)"
         cursor.execute(add_data, (humidity, temperature, open, light, date_time))
         cnx.commit()
+        # Se cierra el cursor y la conexión a la base de datos
         cursor.close()
         cnx.close()
 
