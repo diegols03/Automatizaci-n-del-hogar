@@ -12,15 +12,13 @@ import matplotlib.pyplot as plt
 #Trabajar con flujos de bytes en memorias (imágenes)
 from io import BytesIO
 
-# Codificar y decodificar datos
+# Codificar y decodificar datos (imágenes)
 import base64
 
 # Se crea una instancia de la aplicación Flask
 app = Flask(_name_)
 
-# Se define una función para establecer una conexión con la base de datos y del usuario y devuelve un objeto de conexión y un cursor
-# para interactuar con la base de datos
-
+# Se define una función para establecer una conexión con la base de datos y del usuario y se devuelve un objeto de conexión y un cursor para interactuar con la base de datos
 def createConnection(user_name, database_name, user_password, host, port):   
     # Se crea la conexión a la base de datos
     cnx = mysql.connector.connect(
@@ -30,11 +28,10 @@ def createConnection(user_name, database_name, user_password, host, port):
     return (cnx, cursor)
 
 # Se define una ruta en la aplicación Flask para manejar solicitude GET a raíz 
-
 # La ruta raíz solamente acepta solicitudes GET
 @app.route('/', methods=['GET'])
 def get_sensor_data():
-    # Create a connection to the database
+    # Se crea la conexión a la base de datos
     cnx, cursor = createConnection('sql3664319', 'sql3664319', '1rkdn7S2JY', 'sql3.freemysqlhosting.net', '3306')
 
     # El bloque try se utiliza para manejar excepciones
@@ -47,14 +44,14 @@ def get_sensor_data():
         print("Something went wrong: {}".format(err))
         
 
-    # Query the database
+    # Se hace una consulta la base de datos
     query = "SELECT * FROM sensores"
     cursor.execute(query)
 
-    # Get the data
+    # Se obtienen los datos
     data = cursor.fetchall()
 
-    # Close the connection
+    # Se cierra la conexión
     cursor.close()
     cnx.close()
 
@@ -83,7 +80,6 @@ def get_sensor_data():
     return render_template('index.html', img_data=img_data)
 
 # Se define una ruta para manejar solicitud POST. 
-
 @app.route('/sensor_data', methods=['POST'])
 def receive_sensor_data():
     # Esta línea comprueba si el tipo de contenido de la solicitud POST es 'application/json'
