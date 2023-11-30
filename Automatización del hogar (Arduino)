@@ -1,5 +1,6 @@
 // Inclusión de librerías
 
+
 // Se incluye la librería para manejar la conectividad WiFi
 #include <WiFi.h>
 // Se incluye la librería para realizar peticiones HTTP
@@ -11,6 +12,7 @@
 
 // Definiciones y configuración del sensor DHT11
 
+
 // Se define el pin14 del ESP32 para conectar el sensor DHT11
 #define DHTPIN 14
 // Se especifica que se utilizará el modelo DHT11
@@ -19,6 +21,7 @@
 DHT dht(DHTPIN, DHTTYPE);
 
 // Definición de pines para otros componentes
+
 
 // Se define el pin33 para el color rojo del LED RGB
 const int redPin = 33;
@@ -35,18 +38,27 @@ const int photoInterrupterPin = 19;
 // Se define el pin 18 para el KY-031 Knock Sensor Module
 const int knockSensorPin = 18;
 
+
 // Variables globales
+
+
 // Estado inicial del LED para el sensor KY-031 Knock Sensor Module
 bool ledState = false;
 
+
 // Credenciales de WiFi y URL de la API
+
+
 // Se definen las credenciales de Wifi
 const char* ssid = "Tec-Contingencia";
 const char* password = "";
 // Se define la URL del endpoint de la API a la que se enviarán los datos
 const char* apiEndpoint = "https://automatic-giggle-jj5v456g7pv5hjqwv-5000.app.github.dev/sensor_data";
 
+
 // Se inicia la comunicación Serial y se conecta a la red WiFi
+
+
 void setupWifi()
 {
   // Inicia la comunicación serial con serial entre el ESP32 y la computadora
@@ -64,6 +76,7 @@ void setupWifi()
   // Se imprime la dirección IP local asignada al dispositivo por la red WiFi
   Serial.println(WiFi.localIP());
 }
+
 
 // Se configuran los pines de los sensores como entradas o salidas y se inicializa el sensor DHT11
 void setupSensors()
@@ -87,11 +100,11 @@ void setup()
 
 void loop()
 {
-  // Leer y mostrar datos del DHT11
+  // Se leen y muestran los datos del DHT11
   float h = dht.readHumidity();
   float t = dht.readTemperature();
 
-  // Imprime el estado de los switches y sensores para depuración
+  // Se imprime el estado de los switches y sensores
   Serial.print("Dip Switch 1: ");
   Serial.print(digitalRead(dipSwitch1Pin));
   Serial.print(", Dip Switch 2: ");
@@ -107,19 +120,22 @@ void loop()
   Serial.println("C");
 
   int openValue = 0;
-  int lightValue = 0;  // Nuevo valor para almacenar el estado del LED
+  int lightValue = 0; 
 
   if (digitalRead(dipSwitch1Pin) == HIGH && digitalRead(dipSwitch2Pin) == LOW)
   {
     // Primer switch activado y segundo apagado
     if (digitalRead(photoInterrupterPin) == HIGH)
     {
-      setColor(255, 255, 255); // Blanco
-      openValue = 1;  // Cambiado para almacenar el estado del Photo Interrupter
+      // Color blanco
+      setColor(255, 255, 255); 
+      // Se cambia para almacenar el estado del Photo Interrupter
+      openValue = 1; 
     }
     else
     {
-      setColor(255, 0, 0); // Rojo
+      // Color rojo
+      setColor(255, 0, 0);
       openValue = 0;
     }
   }
@@ -128,19 +144,22 @@ void loop()
     // Segundo switch activado y primero apagado
     if (digitalRead(knockSensorPin) == HIGH)
     {
-      ledState = !ledState; // Cambia el estado del LED
-      delay(100); // Pequeño retardo para evitar múltiples disparos
+      // Se cambia el estado del LED
+      ledState = !ledState;
+      delay(100); 
     }
-    setColor(ledState ? 255 : 0, ledState ? 255 : 0, ledState ? 255 : 0); // Blanco o apagado
-    lightValue = ledState ? 1 : 0;  // Almacenar el estado del LED
+    setColor(ledState ? 255 : 0, ledState ? 255 : 0, ledState ? 255 : 0); 
+    lightValue = ledState ? 1 : 0; 
   }
   else
   {
-    setColor(0, 0, 0); // Ambos switches apagados o ambos activados
+    // Ambos switches apagados o ambos switches activados
+    setColor(0, 0, 0); 
   }
-
-  sendData(t, h, openValue, lightValue);  // Se agrega lightValue al enviar datos
-  delay(5000); // Retardo de 5000 milisegundos para enviar datos cada 5 segundos
+  // Se agrega lightValue al enviar datos
+  sendData(t, h, openValue, lightValue);
+  // Se envían datos cada 5 segundos
+  delay(5000);
 }
 
 void setColor(int red, int green, int blue)
@@ -178,7 +197,7 @@ void sendData(float temperature, float humidity, int open, int light)
   doc["light"] = light;
 
 
-  doc["date_time"] = "2023-11-27 12:00:00";  // Modifica esto con la fecha y hora actual
+  doc["date_time"] = "2023-11-27 12:00:00"; 
 
   // Crea una variable tipo "String" para almacenar la versión serializada del documento JSON
   String json;
@@ -198,7 +217,7 @@ void sendData(float temperature, float humidity, int open, int light)
   }
   else
   {
-    // Print the error code
+    // Se imprime un erro en el código
     Serial.print("Error code: ");
     Serial.println(httpResponseCode);
   }
